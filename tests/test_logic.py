@@ -359,14 +359,14 @@ def release_payload(version="9.9.9", digest=None):
         "assets": [
             {"name": f"barclaw-{version}.tar.gz", "browser_download_url": "http://a/t", "digest": digest},
             {"name": f"barclaw-{version}.tar.gz.sha256", "browser_download_url": "http://a/s"},
-            {"name": f"barclaw_{version}_all.deb", "browser_download_url": "http://a/d"},
+            {"name": f"gnome-shell-extension-{version}.tar.gz", "browser_download_url": "http://a/g"},
         ],
     }).encode()
 
 
 def test_release_parsing():
     release = updater.parse_release(release_payload())
-    assert release.version == (9, 9, 9) and release.tar_url == "http://a/t" and release.deb_url == "http://a/d"
+    assert release.version == (9, 9, 9) and release.tar_url == "http://a/t" and release.tar_name == "barclaw-9.9.9.tar.gz"
     with pytest.raises(updater.UpdateError):
         updater.parse_release(b'{"tag_name":"nightly"}')
 
