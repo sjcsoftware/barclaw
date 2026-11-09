@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- The panel now sits below the menu bar on every desktop. Bars that reserve no space, like Eww with i3 gaps, no longer overlap it.
+
 ## 0.1.1
 
 - One-line install: `install.sh` pulls the latest release and picks the build for your desktop, including the GNOME Shell button where it's needed.

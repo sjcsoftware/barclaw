@@ -12,6 +12,7 @@ from .conftest import has_display
 pytestmark = pytest.mark.skipif(not has_display(), reason="needs a display server")
 
 import barclaw  # noqa: E402
+from barclaw.bar import geometry  # noqa: E402
 from barclaw.bar import tray as T  # noqa: E402
 from barclaw.markdown.charts import paint_chart, parse_chart  # noqa: E402
 from barclaw.markdown.mathrender import render_math  # noqa: E402
@@ -178,3 +179,29 @@ def test_sni_registers_and_serves_properties(bus):
         tray.close()
         Gio.bus_unown_name(owner)
         bus.unregister_object(registration)
+
+
+# MARK: Keeping clear of bars
+
+
+MONITOR = (0, 0, 2560, 1440)
+
+
+@pytest.mark.parametrize("bars,expected", [
+    ([], MONITOR),
+    ([(0, 0, 2560, 49)], (0, 49, 2560, 1391)),  # Eww under i3: reserves nothing, so GTK can't know.
+    ([(8, 8, 2544, 40)], (0, 48, 2560, 1392)),  # A floating bar with a margin.
+    ([(0, 1400, 2560, 40)], (0, 0, 2560, 1400)),
+    ([(0, 0, 2560, 30), (0, 1400, 2560, 40)], (0, 30, 2560, 1370)),
+    ([(0, 0, 60, 1440)], (60, 0, 2500, 1440)),
+    ([(2560, 0, 1920, 49)], MONITOR),  # On the monitor to the right.
+    ([(163, 50, 314, 248)], MONITOR),  # A popup card is not a bar.
+    ([(300, 400, 2000, 60)], MONITOR),  # Wide, but in the middle of the screen.
+    ([(0, 0, 2560, 1440)], MONITOR),  # A fullscreen overlay is not a bar.
+])
+def test_clear_area_removes_only_edge_bars(bars, expected):
+    assert geometry.clear_area(MONITOR, MONITOR, bars) == expected
+
+
+def test_clear_area_respects_a_real_work_area():
+    assert geometry.clear_area(MONITOR, (0, 60, 2560, 1380), [(0, 0, 2560, 30)]) == (0, 60, 2560, 1380)

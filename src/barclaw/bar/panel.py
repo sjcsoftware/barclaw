@@ -15,6 +15,7 @@ from ..support import log
 from ..vision.context import refers_to_screen
 from ..vision.windows import session_type
 from ..voice.hotkey import describe_accelerator
+from .geometry import monitor_clear_area
 from .widgets import AgentStage, ContextRing, ThinkingDots, UsageBar, Waveform
 
 try:
@@ -448,6 +449,7 @@ class Panel:
         self._suspended = False
         self._last_focus_lost = 0.0
         self._geometry_source = 0
+        self._clear_area: Optional[Gdk.Rectangle] = None
         self.window = Gtk.Window(type=Gtk.WindowType.TOPLEVEL, title="BarClaw")
         self.window.set_decorated(False)
         self.window.set_resizable(False)
@@ -654,6 +656,8 @@ class Panel:
             self.anchor = (x, y)
         elif not self.is_expanded:
             self.anchor = self._pointer()
+        if not self.is_expanded or x or y:
+            self._clear_area = None  # Bars can move or change between openings.
         if page:
             self.page = page
         elif self.chat_pending:
@@ -722,7 +726,9 @@ class Panel:
         return display.get_monitor_at_point(*self.anchor) or display.get_monitor(0)
 
     def _work_area(self) -> Gdk.Rectangle:
-        return self._monitor().get_workarea()
+        if self._clear_area is None:
+            self._clear_area = monitor_clear_area(self._monitor())
+        return self._clear_area
 
     def placement(self, width: int, height: int) -> tuple:
         """Top-left corner: under (or above) the icon, kept inside the monitor's work area."""
