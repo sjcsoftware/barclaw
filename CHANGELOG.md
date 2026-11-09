@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- One-line install: `install.sh` pulls the latest release and picks the build for your desktop, including the GNOME Shell button where it's needed.
+- Removed the `.deb` package and the Arch and Fedora recipes. Everything now installs the same way.
+- Start at login now works for installed copies.
+- The "jump to latest" button no longer lingers once a conversation fits on screen.
+
 ## 0.1.0
 
 First release: NotchClaw's feature set for the Linux menu bar.

@@ -15,7 +15,7 @@ Thanks for helping! BarClaw is a small GTK app with few dependencies, and we'd l
 ```bash
 PYTHONPATH=src python3 -m barclaw   # run from the checkout
 scripts/test.sh                     # tests, on a private Xvfb and session bus
-scripts/build.sh                    # tarball, .deb, and checksums in dist/
+scripts/build.sh                    # release assets and checksums in dist/
 scripts/screenshots.sh              # regenerate README images
 ```
 
@@ -89,9 +89,13 @@ In-app updates read GitHub's `releases/latest` for `sjcsoftware/barclaw`, so a r
    gh release create v<version> dist/* --title "BarClaw <version>" --notes "…"
    ```
 
-The updater installs only if the release is newer than the running app, and requires a checksum (GitHub's asset digest or the `.sha256` file). Tarball installs must unpack to BarClaw at the same version as the tag. `.deb` installs go through `pkexec apt-get`. Other package managers are left to update themselves.
+`scripts/build.sh` also packages the GNOME Shell extension from the pushed `platform/gnome-shell` branch, so push that first if it changed.
 
-To test an update without publishing anything, set `BARCLAW_UPDATE_FEED` to the URL of a `releases/latest`-shaped JSON.
+[`install.sh`](install.sh) resolves `releases/latest` and needs `barclaw-<version>.tar.gz`, `gnome-shell-extension-<version>.tar.gz`, and a `.sha256` for each. It's served from `main`, so a change to it is live as soon as it's pushed.
+
+The updater installs only if the release is newer than the running app, and requires a checksum (GitHub's asset digest or the `.sha256` file). The archive must unpack to BarClaw at the same version as the tag.
+
+To test without publishing anything, point the app at a `releases/latest`-shaped JSON with `BARCLAW_UPDATE_FEED`, and the installer at a mirror of the releases page with `BARCLAW_RELEASES_URL`.
 
 ## Privacy and security
 

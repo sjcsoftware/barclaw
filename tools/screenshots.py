@@ -7,9 +7,9 @@ import barclaw
 import cairo
 from gi.repository import Gdk, Pango, PangoCairo
 
-from barclaw.agent.models import AgentActivity, ChatItem, ModelOption, RunProgress, Step, UsageInfo, UsageWindow
+from barclaw.agent.models import AgentActivity, ChatItem, ModelOption, RunProgress, ScreenShare, Step, UsageInfo, UsageWindow
 from barclaw.application import AppModel
-from barclaw.bar.theme import install_css
+from barclaw.bar.theme import SIRI, install_css
 from barclaw.bar.tray import TrayState, render_icon
 from barclaw.gateway.client import ConnectionState
 from barclaw.support import run_until
@@ -36,6 +36,36 @@ def growth(values):
     return [b / a - 1 for a, b in zip(values, values[1:])]
 ```
 """
+
+
+SCREEN_REPLY = """## `code.rate` isn't a number
+
+`Decimal()` was handed something it can't parse, most likely a **coupon with a blank rate**.
+
+Fix it in `shop/models.py`, line 118:
+
+```python
+rate = Decimal(code.rate or 0) / 100
+```
+
+Then check the coupons table for empty rates so the discount isn't silently zero.
+"""
+TERMINAL = [
+    ("$ python manage.py runserver", (0.55, 0.85, 0.6)),
+    ("Watching for file changes with StatReloader", (0.75, 0.77, 0.8)),
+    ("Starting development server at http://127.0.0.1:8000/", (0.75, 0.77, 0.8)),
+    ("", None),
+    ("[09/Nov 21:48:03] \"GET /cart/ HTTP/1.1\" 200 4182", (0.55, 0.58, 0.63)),
+    ("[09/Nov 21:48:11] \"POST /checkout/ HTTP/1.1\" 500 145", (0.95, 0.55, 0.45)),
+    ("", None),
+    ("Internal Server Error: /checkout/", (0.95, 0.45, 0.45)),
+    ("Traceback (most recent call last):", (0.86, 0.88, 0.92)),
+    ('  File "shop/views.py", line 42, in checkout', (0.75, 0.77, 0.8)),
+    ("    total = order.apply_discount(code)", (0.55, 0.75, 1.0)),
+    ('  File "shop/models.py", line 118, in apply_discount', (0.75, 0.77, 0.8)),
+    ("    rate = Decimal(code.rate) / 100", (0.55, 0.75, 1.0)),
+    ("decimal.InvalidOperation: [<class 'decimal.ConversionSyntax'>]", (0.95, 0.45, 0.45)),
+]
 
 
 def pump(seconds=0.35):
@@ -109,6 +139,74 @@ def scene(name, panel, state, crop_bottom=30):
     surface.write_to_png(f"{OUT}/{name}.png")
 
 
+def mono(c, value, x, y, color):
+    layout = PangoCairo.create_layout(c)
+    font = Pango.FontDescription("monospace")
+    font.set_absolute_size(14.5 * Pango.SCALE)
+    layout.set_font_description(font)
+    layout.set_text(value, -1)
+    c.set_source_rgb(*color)
+    c.move_to(x, y)
+    PangoCairo.show_layout(c, layout)
+
+
+def terminal_window(c, x, y, w, h):
+    rounded(c, x, y, w, h, 12)
+    c.set_source_rgb(0.09, 0.1, 0.13)
+    c.fill()
+    rounded(c, x, y, w, 38, 12)
+    c.rectangle(x, y + 20, w, 18)
+    c.set_source_rgb(0.15, 0.16, 0.2)
+    c.fill()
+    text(c, "Terminal — ~/shop", x + w / 2 - 62, y + 10, 13, (1, 1, 1, 0.7))
+    for index, (line, color) in enumerate(TERMINAL):
+        if line:
+            mono(c, line, x + 22, y + 58 + index * 25, color)
+
+
+def edge_glow(c):
+    """The same rim BarClaw draws around the screen while it reads."""
+    depth = 26
+    sides = (
+        (cairo.LinearGradient(0, 0, 0, depth), 0, 0, SCREEN_W, depth, True),
+        (cairo.LinearGradient(0, SCREEN_H, 0, SCREEN_H - depth), 0, SCREEN_H - depth, SCREEN_W, depth, True),
+        (cairo.LinearGradient(0, 0, depth, 0), 0, 0, depth, SCREEN_H, False),
+        (cairo.LinearGradient(SCREEN_W, 0, SCREEN_W - depth, 0), SCREEN_W - depth, 0, depth, SCREEN_H, False),
+    )
+    for fade, x, y, w, h, horizontal in sides:
+        color = cairo.LinearGradient(0, 0, SCREEN_W, 0) if horizontal else cairo.LinearGradient(0, 0, 0, SCREEN_H)
+        for i in range(11):
+            color.add_color_stop_rgba(i / 10, *SIRI[i % 5], 0.95)
+        fade.add_color_stop_rgba(0, 0, 0, 0, 1)
+        fade.add_color_stop_rgba(1, 0, 0, 0, 0)
+        c.save()
+        c.rectangle(x, y, w, h)
+        c.clip()
+        c.set_source(color)
+        c.mask(fade)
+        c.restore()
+
+
+def visual_scene(panel, state):
+    """A full desktop: the error the user asked about, the panel answering, and the reading glow."""
+    surface = cairo.ImageSurface(cairo.FORMAT_RGB24, SCREEN_W, SCREEN_H)
+    c = cairo.Context(surface)
+    wallpaper(c)
+    terminal_window(c, 44, 110, 860, 470)
+    menu_bar(c, state)
+    shot = capture(panel.window)
+    width, height = shot.get_width(), shot.get_height()
+    x, y = SCREEN_W - width - 40, BAR_H + 26
+    rounded(c, x, y, width, height, 18)
+    c.save()
+    c.clip()
+    c.set_source_surface(shot, x, y)
+    c.paint()
+    c.restore()
+    edge_glow(c)
+    surface.write_to_png(f"{OUT}/visual.png")
+
+
 def tray_strip():
     modes = [("idle", "Idle"), ("thinking", "Thinking"), ("listening", "Listening"), ("attention_reply", "New reply"), ("attention_input", "Needs you"), ("offline", "Offline")]
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, 132 * len(modes), 124)
@@ -177,6 +275,16 @@ def main():
     panel.conversation.scroller.get_vadjustment().set_value(0)
     pump(0.3)
     scene("chat", panel, idle)
+
+    session.items = [
+        ChatItem("2", "user", "what's wrong with this error?", date=now, screen=ScreenShare("attached", app="Terminal — ~/shop")),
+        ChatItem("3", "assistant", SCREEN_REPLY, date=now, run_id="s"),
+    ]
+    app._sync()
+    pump(0.8)
+    panel.conversation.scroller.get_vadjustment().set_value(0)
+    pump(0.3)
+    visual_scene(panel, TrayState("🦞", "", "thinking", 0.37))
 
     gateway.state = ConnectionState("offline", message="Gateway unreachable")
     app._sync()

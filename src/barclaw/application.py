@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -256,7 +257,10 @@ class AppModel(Observable):
             return  # Test and development runs must not touch the real session.
         if self.settings.get("autostart"):
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(f"[Desktop Entry]\nType=Application\nName=BarClaw\nExec={sys.executable} -m barclaw\nX-GNOME-Autostart-enabled=true\n")
+            # An installed launcher sets up the import path; a bare interpreter only works from a system package.
+            installed = Path.home() / ".local" / "bin" / "barclaw"
+            command = shutil.which("barclaw") or (str(installed) if installed.exists() else f"{sys.executable} -m barclaw")
+            target.write_text(f"[Desktop Entry]\nType=Application\nName=BarClaw\nExec={command}\nX-GNOME-Autostart-enabled=true\n")
         elif target.exists():
             target.unlink()
 

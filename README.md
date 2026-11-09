@@ -98,24 +98,15 @@ BarClaw is the Linux sibling of [NotchClaw](https://github.com/sjcsoftware/notch
 
 ## Install
 
-Download the latest release from [**Releases**](https://github.com/sjcsoftware/barclaw/releases).
-
-**Debian and Ubuntu**
-
 ```bash
-sudo apt install ./barclaw_<version>_all.deb
+curl -fsSL https://raw.githubusercontent.com/sjcsoftware/barclaw/main/install.sh | bash
 ```
 
-**Any distribution, no root**
+That's it. The script pulls the latest release into your home folder (no root) and picks the right build for your desktop. If GTK or another system package is missing, it shows you the command and asks before running it.
 
-```bash
-tar xf barclaw-<version>.tar.gz
-./barclaw-<version>/install.sh
-```
+Run the same command again any time to update, or use **Settings › Updates › Check for Updates**.
 
-The installer tells you which system packages to add if any are missing.
-
-**Arch and Fedora** have build recipes in [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) and [`packaging/rpm/barclaw.spec`](packaging/rpm/barclaw.spec).
+Prefer to do it by hand? Every version is on the [**Releases**](https://github.com/sjcsoftware/barclaw/releases) page. Download `barclaw-<version>.tar.gz`, unpack it, and run `./install.sh` inside.
 
 ### Run from source
 
@@ -132,9 +123,9 @@ PYTHONPATH=src python3 -m barclaw
 | KDE Plasma, Xfce, Cinnamon, MATE, Budgie, LXQt | StatusNotifierItem | Works out of the box where the panel has a tray applet |
 | Waybar, swaybar, Eww | StatusNotifierItem | Enable the bar's tray module |
 | i3bar, polybar, tint2 | XEmbed tray | Works out of the box |
-| GNOME | StatusNotifierItem | Ubuntu ships the needed AppIndicator extension. Elsewhere, install it, or use the extension on the [`platform/gnome-shell`](https://github.com/sjcsoftware/barclaw/tree/platform/gnome-shell) branch |
+| GNOME | Top bar button, or StatusNotifierItem | The installer adds BarClaw's GNOME Shell button from the [`platform/gnome-shell`](https://github.com/sjcsoftware/barclaw/tree/platform/gnome-shell) branch. If the AppIndicator extension is on (as on Ubuntu), it uses that instead |
 
-GNOME Shell has no tray of its own and GTK can't add to its panel, so that one case gets a separate extension.
+GNOME Shell has no tray of its own and GTK can't add to its panel, so that one case gets a separate extension. To see what the installer would choose, add `-s -- --detect` after `bash`.
 
 **On Wayland** a few things depend on your compositor:
 

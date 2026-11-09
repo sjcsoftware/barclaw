@@ -254,6 +254,9 @@ class Conversation(Gtk.Overlay):
             self.app.session.load_older_history()
 
     def _content_resized(self, adjustment: Gtk.Adjustment) -> None:
+        if adjustment.get_upper() <= adjustment.get_page_size() + 24:
+            self.at_bottom = True  # Everything fits, so there's nothing to jump to.
+            self.jump.hide()
         if self._last_prepend_upper is not None and adjustment.get_upper() != self._last_prepend_upper and not self.app.session.is_loading_older:
             # Keep the message you were reading in place after older ones are added above it.
             adjustment.set_value(adjustment.get_value() + adjustment.get_upper() - self._last_prepend_upper)

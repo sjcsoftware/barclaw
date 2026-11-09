@@ -1,8 +1,7 @@
 """Checks GitHub Releases for a newer BarClaw and installs it.
 
-A self-contained install (tarball, `~/.local/share/barclaw/app`) is swapped in place after its
-checksum and contents are verified. A .deb install goes through `pkexec apt-get`. Other package
-managers own their files, so BarClaw points you at them instead of fighting them.
+The install from install.sh (`~/.local/share/barclaw/app`) is swapped in place after its checksum
+and contents are verified. Anything else, like a source checkout, is pointed at the right way to update.
 """
 from __future__ import annotations
 
@@ -24,6 +23,7 @@ from .support import ExpectedError, Observable, app_version, data_dir, in_thread
 
 REPOSITORY = "sjcsoftware/barclaw"
 RELEASES_PAGE = f"https://github.com/{REPOSITORY}/releases/latest"
+INSTALL_COMMAND = f"curl -fsSL https://raw.githubusercontent.com/{REPOSITORY}/main/install.sh | bash"
 
 
 class UpdateError(ExpectedError):
@@ -66,8 +66,6 @@ class Release:
     page_url: str
     tar_url: Optional[str] = None
     tar_name: Optional[str] = None
-    deb_url: Optional[str] = None
-    deb_name: Optional[str] = None
     assets: Optional[dict] = None
 
     def checksum_source(self, name: str) -> tuple:
@@ -89,11 +87,10 @@ def parse_release(payload: bytes) -> Release:
         raise UpdateError(f"The latest release has an unexpected tag ({tag}).")
     assets = {a["name"]: {"url": a["browser_download_url"], "digest": a.get("digest")} for a in data.get("assets", []) if "name" in a and "browser_download_url" in a}
     tar = next((n for n in assets if n.lower().startswith("barclaw-") and n.endswith(".tar.gz")), None)
-    deb = next((n for n in assets if n.lower().startswith("barclaw") and n.endswith(".deb")), None)
     return Release(
         version=version, tag=tag, notes=data.get("body") or "", page_url=data.get("html_url") or RELEASES_PAGE,
         tar_url=assets[tar]["url"] if tar else None, tar_name=tar,
-        deb_url=assets[deb]["url"] if deb else None, deb_name=deb, assets=assets,
+        assets=assets,
     )
 
 
@@ -118,15 +115,11 @@ def fetch_latest() -> Release:
 
 
 def install_kind() -> str:
-    """`bundle` (replaceable in place), `deb`, `other` (another package manager), or `source`."""
+    """`bundle` (replaceable in place), `other` (a system location it doesn't own), or `source`."""
     root = package_dir().resolve()
     if (root.parent / ".barclaw-install").exists():
         return "bundle"
     if str(root).startswith(("/usr/", "/opt/")):
-        if shutil.which("dpkg-query"):
-            done = subprocess.run(["dpkg-query", "-W", "-f=${Status}", "barclaw"], capture_output=True, text=True)
-            if done.returncode == 0 and "install ok installed" in done.stdout:
-                return "deb"
         return "other"
     return "source"
 
@@ -251,14 +244,11 @@ class Updater(Observable):
         if kind == "source":
             raise UpdateError(f"BarClaw {version} is out. You're running from a source checkout: pull and rerun, or see {release.page_url}")
         if kind == "other":
-            raise UpdateError(f"BarClaw {version} is out. Update it through your package manager, or see {release.page_url}")
+            raise UpdateError(f"BarClaw {version} is out. To update, run: {INSTALL_COMMAND}")
         log.info("Updating BarClaw to %s (%s)", version, kind)
         with tempfile.TemporaryDirectory(prefix="barclaw-update-") as directory:
             work = Path(directory)
-            if kind == "deb":
-                yield from self._install_deb(release, version, work)
-            else:
-                yield from self._install_bundle(release, version, work)
+            yield from self._install_bundle(release, version, work)
             write_private(data_dir() / self.MARKER, json.dumps({"from": app_version()}).encode())
         self.status_text = f"Restarting into {version}…"
         os.execv(sys.executable, [sys.executable, "-m", "barclaw"])
@@ -286,19 +276,3 @@ class Updater(Observable):
             yield in_thread(swap_bundle, installed, staged, staging)
         finally:
             shutil.rmtree(staging, ignore_errors=True)
-
-    def _install_deb(self, release: Release, version: str, work: Path):
-        if not release.deb_url:
-            raise UpdateError(f"BarClaw {version} is out, but its package isn't uploaded yet. Try again in a few minutes.")
-        package = work / release.deb_name
-        yield in_thread(download, release.deb_url, package, self._progress(version))
-        self.status_text = f"Installing {version}…"
-        yield in_thread(verify_checksum, package, release, release.deb_name)
-        if not shutil.which("pkexec"):
-            raise UpdateError(f"Installing needs administrator rights. Run: sudo apt install {package}")
-        # apt runs as the `_apt` user and needs to be able to read the file.
-        os.chmod(work, 0o755)
-        os.chmod(package, 0o644)
-        done = yield in_thread(subprocess.run, ["pkexec", "apt-get", "install", "-y", str(package)], capture_output=True, text=True)
-        if done.returncode != 0:
-            raise UpdateError("The package install was cancelled or failed.")
