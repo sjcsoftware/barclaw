@@ -144,6 +144,8 @@ GNOME Shell has no tray of its own and GTK can't add to its panel, so that one c
 
 If no tray is available, BarClaw opens its panel directly. `barclaw --toggle` always works and can be bound to a key.
 
+> **On this branch:** see [`gnome-shell/README.md`](gnome-shell/README.md) for the GNOME Shell extension.
+
 ## Set up
 
 BarClaw opens **Settings** on first launch when it has nothing to connect to. You can reopen it any time with <kbd>Ctrl ,</kbd>, from the gear in the panel, or from the icon's right-click menu.

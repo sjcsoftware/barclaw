@@ -1,0 +1,7 @@
+.barclaw-button { padding: 0 6px; }
+.barclaw-emoji { font-size: 15px; }
+.barclaw-offline .barclaw-emoji { color: rgba(255, 255, 255, 0.45); }
+.barclaw-thinking { box-shadow: inset 0 -2px 0 #3b82f5; }
+.barclaw-listening { box-shadow: inset 0 -2px 0 #ff2e94; }
+.barclaw-attention { box-shadow: inset 0 -2px 0 #a854f7, 0 0 8px #ff2e94; }
+.barclaw-usage { font-size: 10px; margin-left: 5px; color: rgba(255, 255, 255, 0.65); }

@@ -1,0 +1,7 @@
+{
+  "uuid": "barclaw@sjcsoftware.github.io",
+  "name": "BarClaw",
+  "description": "Puts BarClaw, your OpenClaw agent, in the GNOME top bar. Needs the BarClaw app.",
+  "url": "https://github.com/sjcsoftware/barclaw",
+  "shell-version": ["45", "46", "47", "48", "49"]
+}
