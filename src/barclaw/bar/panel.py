@@ -656,6 +656,8 @@ class Panel:
         elif self.chat_pending:
             self.page = "chat"
         self.chat_pending = False
+        if not self.is_expanded:
+            self.app.screen_reader.remember_active_window()
         self.app.session.clear_attention()
         self.refresh()
         self._apply_page()

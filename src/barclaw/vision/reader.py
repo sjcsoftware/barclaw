@@ -114,12 +114,23 @@ class ScreenReader:
         self.restore_own_windows: Callable[[], None] = lambda: None
         self._languages: Optional[list] = None
         self._portal_token = 0
+        self._window_before_panel: tuple = (None, None)
 
     @staticmethod
     def _no_windows() -> Future:
         future = Future()
         future.set_result(None)
         return future
+
+    def remember_active_window(self) -> None:
+        """Call just before the panel takes focus: that's the app the user means by "this"."""
+        self._window_before_panel = active_window()
+
+    def _user_window(self) -> tuple:
+        current = active_window()
+        if current[0] is None or current[0].lower().startswith("barclaw"):
+            return self._window_before_panel
+        return current
 
     def languages(self) -> list:
         if self._languages is None:
@@ -135,9 +146,9 @@ class ScreenReader:
             raise ScreenReadError.no_display()
         monitors = [display.get_monitor(i) for i in range(display.get_n_monitors())]
         index, monitor = self._choose_monitor(display, monitors, options.screen_index)
-        window = active_window()
 
         yield self.hide_own_windows()
+        window = self._user_window()
         try:
             if session_type() == "x11":
                 full = self._grab_x11(monitor)

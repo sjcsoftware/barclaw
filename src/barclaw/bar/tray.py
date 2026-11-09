@@ -20,6 +20,7 @@ from ..vision.windows import session_type
 from .theme import SIRI
 
 WATCHER_BUS = "org.kde.StatusNotifierWatcher"
+SHELL_HOST_BUS = "dev.barclaw.Shell"
 WATCHER_PATH = "/StatusNotifierWatcher"
 ITEM_PATH = "/StatusNotifierItem"
 MENU_PATH = "/MenuBar"
@@ -463,15 +464,27 @@ class NoTray(TrayBase):
         pass
 
 
-def has_watcher(bus: Gio.DBusConnection) -> bool:
+def _name_has_owner(bus: Gio.DBusConnection, name: str) -> bool:
     try:
         reply = bus.call_sync(
             "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "NameHasOwner",
-            GLib.Variant("(s)", (WATCHER_BUS,)), GLib.VariantType("(b)"), Gio.DBusCallFlags.NONE, 1500, None,
+            GLib.Variant("(s)", (name,)), GLib.VariantType("(b)"), Gio.DBusCallFlags.NONE, 1500, None,
         )
     except GLib.Error:
         return False
     return reply.unpack()[0]
+
+
+def has_watcher(bus: Gio.DBusConnection) -> bool:
+    return _name_has_owner(bus, WATCHER_BUS)
+
+
+def shell_host_present() -> bool:
+    """True when BarClaw's GNOME Shell extension is drawing the panel button instead of a tray icon."""
+    try:
+        return _name_has_owner(Gio.bus_get_sync(Gio.BusType.SESSION, None), SHELL_HOST_BUS)
+    except GLib.Error:
+        return False
 
 
 def make_tray() -> TrayBase:
@@ -480,7 +493,7 @@ def make_tray() -> TrayBase:
         bus: Optional[Gio.DBusConnection] = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     except GLib.Error:
         bus = None
-    if override == "none":
+    if override == "none" or (override is None and bus is not None and shell_host_present()):
         return NoTray()
     if override == "sni" and bus is not None:
         return SniTray(bus)

@@ -83,6 +83,7 @@ class SettingsWindow:
         self.window = Gtk.Window(title="BarClaw Settings")
         self.window.set_default_size(620, 520)
         self.window.set_wmclass("barclaw-settings", "BarClaw")
+        self.window.set_type_hint(Gdk.WindowTypeHint.DIALOG)  # Floats on tiling window managers.
         self.window.connect("delete-event", lambda *_: (self.window.hide(), True)[1])
         self.window.connect("key-press-event", self._key)
         layout = Gtk.Box()

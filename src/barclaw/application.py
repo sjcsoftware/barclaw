@@ -12,7 +12,7 @@ from gi.repository import Gdk, Gio, GLib, Gtk
 from .agent.session import AgentSession
 from .bar.panel import Panel
 from .bar.theme import install_css
-from .bar.tray import NoTray, SniTray, TrayState, XEmbedTray, make_tray
+from .bar.tray import SniTray, TrayState, XEmbedTray, make_tray, shell_host_present
 from .gateway.client import GatewayClient
 from .settings.store import AppSettings
 from .settings.view import SettingsWindow
@@ -121,7 +121,7 @@ class AppModel(Observable):
     # MARK: Tray
 
     def _check_tray(self) -> bool:
-        if not self.tray.is_visible():
+        if not self.tray.is_visible() and not shell_host_present():
             log.info("No system tray is visible; opening the panel directly")
             if not self.panel.is_expanded:
                 self.panel.expand()
@@ -503,4 +503,6 @@ class BarClawApplication(Gtk.Application):
 
 def main() -> int:
     setup_logging()
+    GLib.set_prgname("barclaw")
+    GLib.set_application_name("BarClaw")
     return BarClawApplication().run(sys.argv)

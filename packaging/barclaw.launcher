@@ -1,0 +1,6 @@
+#!/usr/bin/python3
+import sys
+
+from barclaw.application import main
+
+sys.exit(main())

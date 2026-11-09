@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=BarClaw
+GenericName=OpenClaw agent
+Comment=Talk to your OpenClaw agent from the menu bar
+Exec=barclaw
+Icon=dev.barclaw.Barclaw
+Terminal=false
+Categories=Utility;Network;
+Keywords=openclaw;agent;ai;assistant;tray;
+StartupNotify=false
+Actions=Chat;Settings;
+
+[Desktop Action Chat]
+Name=Open Chat
+Exec=barclaw --chat
+
+[Desktop Action Settings]
+Name=Settings
+Exec=barclaw --settings

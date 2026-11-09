@@ -1,0 +1,30 @@
+# Maintainer: chaseungjoon
+pkgname=barclaw
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Talk to your OpenClaw agent from the Linux menu bar"
+arch=('any')
+url="https://github.com/sjcsoftware/barclaw"
+license=('GPL-3.0-or-later')
+depends=('python>=3.10' 'python-gobject' 'python-cairo' 'python-cryptography' 'gtk3' 'libsoup3')
+optdepends=('tesseract: read text on screen'
+            'pipewire: microphone capture'
+            'gtk-layer-shell: panel placement on wlroots and KDE Wayland'
+            'grim: screen capture on wlroots'
+            'noto-fonts-emoji: agent emoji'
+            'otf-latin-modern: math in replies'
+            'xorg-xprop: active window name on X11')
+source=("$url/releases/download/v$pkgver/barclaw-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "barclaw-$pkgver"
+  local site
+  site="$(python -c 'import site; print(site.getsitepackages()[0])')"
+  install -d "$pkgdir$site"
+  cp -r barclaw "$pkgdir$site/"
+  python -m compileall -q "$pkgdir$site/barclaw"
+  printf '#!/usr/bin/python3\nimport sys\nfrom barclaw.application import main\nsys.exit(main())\n' | install -Dm755 /dev/stdin "$pkgdir/usr/bin/barclaw"
+  install -Dm644 dev.barclaw.Barclaw.desktop "$pkgdir/usr/share/applications/dev.barclaw.Barclaw.desktop"
+  install -Dm644 icon.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/dev.barclaw.Barclaw.png"
+}

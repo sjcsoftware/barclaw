@@ -436,3 +436,15 @@ def test_swap_rolls_back_on_failure(tmp_path, monkeypatch):
     with pytest.raises(updater.UpdateError):
         updater.swap_bundle(installed, staged, work)
     assert (installed / "old").exists()
+
+
+def test_reader_never_reports_barclaw_as_the_active_app(monkeypatch):
+    from barclaw.vision import reader as R
+
+    instance = R.ScreenReader()
+    monkeypatch.setattr(R, "active_window", lambda: ("firefox", "News"))
+    instance.remember_active_window()
+    monkeypatch.setattr(R, "active_window", lambda: ("BarClaw", "BarClaw"))
+    assert instance._user_window() == ("firefox", "News")
+    monkeypatch.setattr(R, "active_window", lambda: ("code", "main.py"))
+    assert instance._user_window() == ("code", "main.py")
