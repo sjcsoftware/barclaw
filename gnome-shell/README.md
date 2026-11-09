@@ -6,12 +6,12 @@ It's a thin front end: the BarClaw app from `main` still does all the work. The 
 
 ## Install
 
-Install the BarClaw app from the [latest release](https://github.com/sjcsoftware/barclaw/releases/latest), then:
+The [BarClaw installer](https://github.com/sjcsoftware/barclaw#install) adds this automatically on GNOME when no AppIndicator extension is on. Log out and back in to see the button.
+
+To force it anyway:
 
 ```bash
-gnome-shell/install.sh
-# log out and back in
-gnome-extensions enable barclaw@sjcsoftware.github.io
+curl -fsSL https://raw.githubusercontent.com/sjcsoftware/barclaw/main/install.sh | BARCLAW_VARIANT=gnome bash
 ```
 
 ## Use

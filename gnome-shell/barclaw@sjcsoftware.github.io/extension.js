@@ -75,7 +75,9 @@ class BarClawButton extends PanelMenu.Button {
 
     _spawn(...args) {
         try {
-            Gio.Subprocess.new(['barclaw', ...args], Gio.SubprocessFlags.NONE);
+            // The shell's PATH often lacks ~/.local/bin, where the installer puts the launcher.
+            const launcher = GLib.find_program_in_path('barclaw') ?? `${GLib.get_home_dir()}/.local/bin/barclaw`;
+            Gio.Subprocess.new([launcher, ...args], Gio.SubprocessFlags.NONE);
         } catch (error) {
             Main.notify('BarClaw', 'The BarClaw app isn\'t installed.');
             console.error(error);
