@@ -16,8 +16,8 @@ from .bar.tray import SniTray, TrayState, XEmbedTray, make_tray, shell_host_pres
 from .gateway.client import GatewayClient
 from .settings.store import AppSettings
 from .settings.view import SettingsWindow
-from .support import Future, Observable, Task, log, observed, resource, setup_logging, sleep, spawn
-from .updater import RELEASES_PAGE, Updater
+from .support import Future, Observable, Task, app_version, log, observed, setup_logging, sleep, spawn
+from .updater import Updater
 from .vision.context import refers_to_screen
 from .vision.glow import ScreenEdgeGlow
 from .vision.node import ScreenNode
@@ -466,6 +466,13 @@ class BarClawApplication(Gtk.Application):
         for name, description in options:
             self.add_main_option(name, 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, description, None)
 
+    def do_handle_local_options(self, options: GLib.VariantDict) -> int:
+        """`--version` answers here, without starting or disturbing a running instance."""
+        if options.contains("version"):
+            print(f"BarClaw {app_version()}")
+            return 0
+        return -1
+
     def do_startup(self) -> None:
         Gtk.Application.do_startup(self)
         install_css()
@@ -480,11 +487,7 @@ class BarClawApplication(Gtk.Application):
     def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> int:
         options = command_line.get_options_dict().end().unpack()
         model = self.model
-        if options.get("version"):
-            from .support import app_version
-
-            command_line.print_(f"BarClaw {app_version()}\n")
-        elif options.get("quit"):
+        if options.get("quit"):
             model.quit()
         elif options.get("toggle"):
             model.panel.toggle()

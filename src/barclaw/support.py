@@ -40,14 +40,6 @@ def package_dir() -> Path:
     return Path(__file__).resolve().parent
 
 
-def resource(*parts: str) -> Path:
-    """A bundled file. Source checkouts keep `data/` at the repo root; installs keep it in the package."""
-    bundled = package_dir().joinpath("data", *parts)
-    if bundled.exists():
-        return bundled
-    return package_dir().parent.parent.joinpath("data", *parts)
-
-
 def app_version() -> str:
     for candidate in (package_dir() / "VERSION", package_dir().parent.parent / "VERSION"):
         try:

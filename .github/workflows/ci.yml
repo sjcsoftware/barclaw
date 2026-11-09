@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-gi python3-gi-cairo python3-cairo python3-cryptography python3-pytest \
+            gir1.2-gtk-3.0 gir1.2-soup-3.0 xvfb dbus-x11 fonts-dejavu fonts-noto-color-emoji adwaita-icon-theme
+      - name: Test
+        run: scripts/test.sh
+      - name: Build
+        run: scripts/build.sh
