@@ -217,7 +217,7 @@ def tray_strip():
     for i, (mode, title) in enumerate(modes):
         c.save()
         c.translate(38 + i * 132, 14)
-        c.set_source_surface(render_icon(56, TrayState(mode=mode, usage=0.37), 0.15), 0, 0)
+        c.set_source_surface(render_icon(56, TrayState(mode=mode), 0.15), 0, 0)
         c.paint()
         c.restore()
         layout = PangoCairo.create_layout(c)
