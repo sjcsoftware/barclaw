@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- The menu bar icon no longer has a usage stripe under it, in any state. Codex usage still shows in the icon's tooltip and next to the model name in the panel.
+
 ## 0.1.2
 
 - The panel now sits below the menu bar on every desktop. Bars that reserve no space, like Eww with i3 gaps, no longer overlap it.

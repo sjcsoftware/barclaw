@@ -70,7 +70,7 @@ class TrayState:
     tooltip: str = "BarClaw"
     # idle | offline | listening | thinking | attention_reply | attention_input | attention_error
     mode: str = "idle"
-    usage: Optional[float] = None  # 0…1, drawn as a thin meter under the icon.
+    usage: Optional[float] = None  # 0…1, shown in the tooltip and the GNOME Shell label.
 
     @property
     def animated(self) -> bool:
@@ -91,10 +91,8 @@ def render_icon(size: int, state: TrayState, phase: float) -> cairo.ImageSurface
     """The icon at one size: the agent's emoji with a state ring. `phase` runs 0…1 and loops."""
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
     c = cairo.Context(surface)
-    meter = 3 if state.usage is not None and size >= 20 else 0
-    field = size - meter
-    cx, cy = size / 2, field / 2
-    radius = field / 2 - max(1.0, size * 0.05)
+    cx, cy = size / 2, size / 2
+    radius = size / 2 - max(1.0, size * 0.05)
 
     if state.mode.startswith("attention"):
         pulse = 0.65 + 0.35 * math.sin(phase * 2 * math.pi)
@@ -113,7 +111,7 @@ def render_icon(size: int, state: TrayState, phase: float) -> cairo.ImageSurface
         c.arc(cx, cy, radius, 0, 2 * math.pi)
         c.stroke()
 
-    inner = field * 0.62 if state.mode != "idle" and state.mode != "offline" else field * 0.78
+    inner = size * 0.62 if state.mode != "idle" and state.mode != "offline" else size * 0.78
     layout = _emoji_layout(c, state.emoji, inner)
     width, height = layout.get_pixel_size()
     c.move_to(cx - width / 2, cy - height / 2)
@@ -124,19 +122,11 @@ def render_icon(size: int, state: TrayState, phase: float) -> cairo.ImageSurface
         c.set_source_rgba(0.62, 0.62, 0.62, 0.8)
         c.mask(pattern)
         c.set_source_rgba(0.95, 0.3, 0.27, 1)
-        c.arc(size - size * 0.2, field - field * 0.2, max(1.8, size * 0.13), 0, 2 * math.pi)
+        c.arc(size - size * 0.2, size - size * 0.2, max(1.8, size * 0.13), 0, 2 * math.pi)
         c.fill()
     else:
         PangoCairo.show_layout(c, layout)
 
-    if meter:
-        used = min(1.0, max(0.0, state.usage or 0))
-        c.set_source_rgba(0.5, 0.5, 0.55, 0.55)
-        c.rectangle(2, size - 2, size - 4, 2)
-        c.fill()
-        c.set_source_rgba(*(SIRI[0] if used >= 0.85 else SIRI[3]), 1)
-        c.rectangle(2, size - 2, (size - 4) * used, 2)
-        c.fill()
     surface.flush()
     return surface
 

@@ -79,6 +79,13 @@ def test_tray_icon_renders_every_state(mode, size):
     assert inked_pixels(T.render_icon(size, T.TrayState(mode=mode, usage=0.5), 0.3)) > 0
 
 
+@pytest.mark.parametrize("mode", ["idle", "offline", "thinking", "attention_reply"])
+def test_tray_icon_draws_no_usage_meter(mode):
+    with_usage = T.render_icon(22, T.TrayState(mode=mode, usage=0.5), 0.3)
+    without = T.render_icon(22, T.TrayState(mode=mode), 0.3)
+    assert bytes(with_usage.get_data()) == bytes(without.get_data())
+
+
 def test_accelerators():
     assert describe_accelerator("<Alt>space") == "Alt+Space"
     assert to_portal_trigger("<Control><Alt>space") == "CTRL+ALT+space"
