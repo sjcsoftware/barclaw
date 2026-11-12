@@ -220,6 +220,31 @@ def test_icon_moves_to_a_bar_that_starts_after_barclaw(bus, monkeypatch):
             bus.unregister_object(registration)
 
 
+
+def test_home_pills_keep_one_width_with_long_names(monkeypatch):
+    from barclaw.agent.models import SessionSettings
+    from barclaw.agent.session import AgentSession
+    from barclaw.application import AppModel
+    from barclaw.bar.panel import PILL_WIDTH
+
+    long_session = "[OpenClaw heartbeat poll] and a much longer session name"
+    monkeypatch.setattr(AgentSession, "current_session_title", property(lambda _self: long_session))
+    monkeypatch.setattr(SessionSettings, "model_ref", property(lambda _self: "provider/some-extremely-long-model-name-2026"))
+    model = AppModel()
+    panel = model.panel
+    try:
+        panel.expand(10, 10)
+        run_until(lambda: False, 0.3)
+        assert panel.action_session.title.get_text() == long_session
+        pills = (panel.action_model, panel.action_effort, panel.action_compact, panel.action_chat, panel.action_session, panel.action_settings)
+        assert {pill.get_allocated_width() for pill in pills} == {PILL_WIDTH}
+        assert panel.action_session.get_tooltip_text() == long_session
+    finally:
+        model.tray.close()
+        panel.window.destroy()
+        model.settings_window.window.destroy()
+
+
 # MARK: Keeping clear of bars
 
 

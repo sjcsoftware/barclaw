@@ -69,6 +69,9 @@ def wants_wide_layout(text: Optional[str]) -> bool:
     return bool(text) and (len(text) > 650 or "```" in text or "\n|" in text or text.startswith("|"))
 
 
+PILL_WIDTH = 156  # Every pill around the agent, so both columns line up.
+
+
 class PillAction(Gtk.Button):
     """A pill button used around the agent on the home screen."""
 
@@ -77,10 +80,12 @@ class PillAction(Gtk.Button):
         self.get_style_context().add_class("pill")
         if prominent:
             self.get_style_context().add_class("prominent")
-        self.set_size_request(156, 30)
+        self.set_size_request(PILL_WIDTH, 30)
         row = Gtk.Box(spacing=7)
         row.pack_start(label(glyph), False, False, 0)
         self.title = label(title, ellipsize=True)
+        # Asks for no width of its own, so a long model or session name ellipsizes instead of widening the pill.
+        self.title.set_max_width_chars(1)
         row.pack_start(self.title, True, True, 0)
         if trailing is not None:
             row.pack_end(trailing, False, False, 0)
@@ -92,6 +97,12 @@ class PillAction(Gtk.Button):
             row.pack_end(label("⌄", "faint"), False, False, 0)
         self.add(row)
         self.connect("clicked", lambda _b: on_click())
+
+    def set_title(self, text: str) -> None:
+        """Sets a title that may not fit; the full text stays available as the tooltip."""
+        if self.title.get_text() != text:
+            self.title.set_text(text)
+            self.set_tooltip_text(text)
 
 
 class ChatRow(Gtk.Box):
@@ -1013,7 +1024,7 @@ class Panel:
         app = self.app
         session, voice, settings = app.session, app.voice, app.settings
         session_settings = session.session_settings
-        self.action_model.title.set_text(short_model_name(session_settings.model_ref) if session_settings.model_ref else "Model")
+        self.action_model.set_title(short_model_name(session_settings.model_ref) if session_settings.model_ref else "Model")
         self.action_effort.title.set_text((session_settings.thinking_level or "Effort").title())
         fraction = session_settings.context_fraction
         if fraction is not None:
@@ -1028,7 +1039,7 @@ class Panel:
         replies = sum(1 for item in session.items if item.role == "assistant")
         self.action_chat.badge.set_text(str(replies))
         self.action_chat.badge.set_visible(replies > 0)
-        self.action_session.title.set_text(session.current_session_title)
+        self.action_session.set_title(session.current_session_title)
 
         stage = self.stage
         stage.emoji = settings.resolved_emoji

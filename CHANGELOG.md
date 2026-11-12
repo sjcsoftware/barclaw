@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+- The six buttons around the agent are all the same width again. A long session or model name is shortened with "…" instead of widening its column, and the full name shows on hover.
+
 ## 0.1.4
 
 - Start at login on X11 no longer leaves you without an icon when BarClaw starts before a StatusNotifier bar like Eww or Waybar. The icon moves to the bar as soon as it appears, and the panel BarClaw opened while it waited closes again.
