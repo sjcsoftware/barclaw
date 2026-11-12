@@ -165,6 +165,7 @@ class TrayBase:
     def __init__(self) -> None:
         self.on_activate: Callable[[int, int], None] = lambda _x, _y: None
         self.on_secondary: Callable[[], None] = lambda: None
+        self.on_visible: Callable[[], None] = lambda: None  # The icon has just appeared in a bar.
         self.menu_items: list = []  # (label or None for a separator, callback)
         self.state = TrayState()
         self._animation = 0
@@ -197,6 +198,14 @@ class TrayBase:
 
     def rebuild_menu(self) -> None:
         pass
+
+    def close(self) -> None:
+        self._stop_animation()
+
+    def _stop_animation(self) -> None:
+        if self._animation:
+            GLib.source_remove(self._animation)
+            self._animation = 0
 
 
 class SniTray(TrayBase):
@@ -234,8 +243,10 @@ class SniTray(TrayBase):
         def finished(connection: Gio.DBusConnection, result: Gio.AsyncResult) -> None:
             try:
                 connection.call_finish(result)
-                self._registered = True
+                was_registered, self._registered = self._registered, True
                 log.info("Registered with the StatusNotifier watcher")
+                if not was_registered:
+                    self.on_visible()
             except GLib.Error as error:
                 log.info("StatusNotifier registration failed: %s", error.message)
 
@@ -364,9 +375,7 @@ class SniTray(TrayBase):
         Gio.bus_unown_name(self._name_id)
         self.bus.unregister_object(self._item_id)
         self.bus.unregister_object(self._menu_id)
-        if self._animation:
-            GLib.source_remove(self._animation)
-            self._animation = 0
+        self._stop_animation()
 
 
 def popup_gtk_menu(items: list) -> None:
@@ -397,12 +406,22 @@ class XEmbedTray(TrayBase):
         self.icon.connect("activate", self._activated)
         self.icon.connect("popup-menu", self._popup)
         self.icon.connect("size-changed", lambda _i, _s: (self._redraw(), True)[1])
+        self.icon.connect("notify::embedded", self._embedded_changed)
         self._size = 22
         self._redraw()
 
     def is_visible(self) -> bool:
         with _quiet():
             return self.icon.is_embedded()
+
+    def _embedded_changed(self, *_args: Any) -> None:
+        if self.is_visible():
+            self.on_visible()
+
+    def close(self) -> None:
+        self._stop_animation()
+        with _quiet():
+            self.icon.set_visible(False)
 
     def _activated(self, icon: Gtk.StatusIcon) -> None:
         with _quiet():

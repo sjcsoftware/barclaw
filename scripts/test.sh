@@ -5,7 +5,8 @@ cd "$(dirname "$0")/.."
 export PYTHONPATH="$PWD/src" GDK_BACKEND=x11 NO_AT_BRIDGE=1
 if ! command -v Xvfb >/dev/null; then
   echo "Xvfb not found; running without display tests (install xvfb for the full suite)." >&2
-  exec python3 -m pytest -q "$@"
+  # Without a private display, hide the real one and its session bus, or the tests land on your desktop.
+  exec env -u DISPLAY -u WAYLAND_DISPLAY -u I3SOCK dbus-run-session -- python3 -m pytest -q "$@"
 fi
 DISPLAY_NUM=$(( 90 + RANDOM % 400 ))
 Xvfb ":$DISPLAY_NUM" -screen 0 1600x1000x24 -nolisten tcp >/dev/null 2>&1 &

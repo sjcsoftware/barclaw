@@ -13,7 +13,7 @@ from gi.repository import Gdk, Gio, GLib, Gtk
 from .agent.session import AgentSession
 from .bar.panel import Panel
 from .bar.theme import install_css
-from .bar.tray import SniTray, TrayState, XEmbedTray, make_tray, shell_host_present
+from .bar.tray import WATCHER_BUS, SniTray, TrayBase, TrayState, XEmbedTray, make_tray, shell_host_present
 from .gateway.client import GatewayClient
 from .settings.store import AppSettings
 from .settings.view import SettingsWindow
@@ -57,7 +57,9 @@ class AppModel(Observable):
         self.hotkey: Any = make_hotkey()
         self.hotkey_error: Optional[str] = None
         self._recording_shortcut = False
-        self.tray = make_tray()
+        self.tray: TrayBase = make_tray()
+        self._opened_for_missing_tray = False
+        self._sni_watch = 0
         self.panel = Panel(self)
         self.settings_window = SettingsWindow(self)
         self._expanded_for_voice = False
@@ -82,9 +84,7 @@ class AppModel(Observable):
         self.hotkey.on_press = self.push_to_talk_pressed
         self.hotkey.on_release = self.push_to_talk_released
 
-        self.tray.on_activate = self.panel.toggle
-        self.tray.on_secondary = self.toggle_listening
-        self.tray.menu_items = [
+        self._menu_items = [
             ("Open BarClaw", self.panel.expand),
             ("Chat", lambda: self.panel.expand(page="chat")),
             ("Talk", self.toggle_listening),
@@ -94,9 +94,8 @@ class AppModel(Observable):
             (None, None),
             ("Quit", self.quit),
         ]
-        self.tray.rebuild_menu()
-        if isinstance(self.tray, SniTray):
-            self.tray.on_gone = self._tray_host_gone
+        self._wire_tray(self.tray)
+        self._watch_for_late_sni_host()
         self.quit_handler: Callable[[], None] = lambda: None
 
         for observable in (self.settings, self.gateway, self.session, self.voice, self.screen_node, self):
@@ -121,13 +120,51 @@ class AppModel(Observable):
 
     # MARK: Tray
 
+    def _wire_tray(self, tray: TrayBase) -> None:
+        tray.on_activate = self.panel.toggle
+        tray.on_secondary = self.toggle_listening
+        tray.on_visible = self._tray_became_visible
+        tray.menu_items = self._menu_items
+        tray.rebuild_menu()
+        if isinstance(tray, SniTray):
+            tray.on_gone = self._tray_host_gone
+
+    def _watch_for_late_sni_host(self) -> None:
+        """At login BarClaw can start before the bar does. On X11 that leaves it with an XEmbed
+        icon that a StatusNotifier-only bar (eww, waybar) never shows, so it moves over once one appears."""
+        if not isinstance(self.tray, XEmbedTray) or os.environ.get("BARCLAW_TRAY"):
+            return
+        try:
+            bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        except GLib.Error:
+            return
+        self._sni_watch = Gio.bus_watch_name_on_connection(bus, WATCHER_BUS, Gio.BusNameWatcherFlags.NONE, self._sni_host_appeared, None)
+
+    def _sni_host_appeared(self, bus: Gio.DBusConnection, *_args: Any) -> None:
+        if not isinstance(self.tray, XEmbedTray) or self.tray.is_visible():
+            return  # Already showing in an XEmbed tray; leave it there.
+        log.info("A StatusNotifier host appeared; moving the icon to it")
+        Gio.bus_unwatch_name(self._sni_watch)
+        self._sni_watch = 0
+        old, self.tray = self.tray, SniTray(bus)
+        old.close()
+        self._wire_tray(self.tray)
+        self._sync()
+
     def _check_tray(self) -> bool:
         if not self.tray.is_visible() and not shell_host_present():
             log.info("No system tray is visible; opening the panel directly")
             if not self.panel.is_expanded:
                 self.panel.expand()
+                self._opened_for_missing_tray = True
             self.session.show_toast("No tray found: see “Desktops” in the README")
         return GLib.SOURCE_REMOVE
+
+    def _tray_became_visible(self) -> None:
+        # The bar came up after the fallback opened the panel; the icon takes over from here.
+        if self._opened_for_missing_tray and self.panel.is_expanded and not self.panel.pinned:
+            self.panel.collapse()
+        self._opened_for_missing_tray = False
 
     def _tray_host_gone(self) -> None:
         log.info("The tray host went away; waiting for it to return")
@@ -184,6 +221,8 @@ class AppModel(Observable):
             self.settings_window.refresh()
 
     def panel_visibility_changed(self) -> None:
+        if not self.panel.is_expanded:
+            self._opened_for_missing_tray = False
         self._sync()
 
     # MARK: Control interface (used by the GNOME Shell extension)
@@ -491,7 +530,10 @@ class BarClawApplication(Gtk.Application):
     def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> int:
         options = command_line.get_options_dict().end().unpack()
         model = self.model
-        if options.get("quit"):
+        if not any(options.values()) and command_line.get_is_remote():
+            # Launched again (from a menu, rofi, or a desktop file) while already running: show it.
+            model.panel.expand()
+        elif options.get("quit"):
             model.quit()
         elif options.get("toggle"):
             model.panel.toggle()

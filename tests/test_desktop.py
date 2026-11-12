@@ -188,6 +188,38 @@ def test_sni_registers_and_serves_properties(bus):
         bus.unregister_object(registration)
 
 
+
+def test_icon_moves_to_a_bar_that_starts_after_barclaw(bus, monkeypatch):
+    """At login on X11, BarClaw can start before a StatusNotifier-only bar such as eww."""
+    from barclaw.application import AppModel
+
+    monkeypatch.delenv("BARCLAW_TRAY", raising=False)
+    monkeypatch.setattr(T, "session_type", lambda: "x11")
+    model = AppModel()
+    owner = registration = 0
+    try:
+        assert isinstance(model.tray, T.XEmbedTray) and not model.tray.is_visible()
+        model._check_tray()  # Nothing embedded the icon, so the fallback opens the panel.
+        assert model.panel.is_expanded
+
+        def method(_c, _sender, _p, _i, _m, _params, invocation):
+            invocation.return_value(None)
+
+        registration = bus.register_object(T.WATCHER_PATH, Gio.DBusNodeInfo.new_for_xml(WATCHER_XML).interfaces[0], method, None)
+        owner = Gio.bus_own_name_on_connection(bus, T.WATCHER_BUS, Gio.BusNameOwnerFlags.NONE, None, None)
+        assert run_until(lambda: isinstance(model.tray, T.SniTray) and model.tray.is_visible(), 3)
+        assert not model.panel.is_expanded  # The icon is there now, so the fallback panel goes away.
+        assert model.tray.menu_items and model.tray.on_activate == model.panel.toggle
+    finally:
+        model.tray.close()
+        model.panel.window.destroy()
+        model.settings_window.window.destroy()
+        if owner:
+            Gio.bus_unown_name(owner)
+        if registration:
+            bus.unregister_object(registration)
+
+
 # MARK: Keeping clear of bars
 
 

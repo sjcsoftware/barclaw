@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4
+
+- Start at login on X11 no longer leaves you without an icon when BarClaw starts before a StatusNotifier bar like Eww or Waybar. The icon moves to the bar as soon as it appears, and the panel BarClaw opened while it waited closes again.
+- Launching BarClaw while it's already running (from rofi or an app menu) now opens the panel instead of doing nothing.
+- `scripts/test.sh` without Xvfb no longer runs the tests on your real display and session bus.
+
 ## 0.1.3
 
 - The menu bar icon no longer has a usage stripe under it, in any state. Codex usage still shows in the icon's tooltip and next to the model name in the panel.
